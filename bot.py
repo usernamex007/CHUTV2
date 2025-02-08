@@ -1,5 +1,6 @@
 import asyncio
 from telethon import TelegramClient, events, Button
+from telethon.errors import SessionPasswordNeededError, PhoneCodeExpiredError
 from telethon.sessions import StringSession
 
 # 🔹 Telegram API Credentials
@@ -72,15 +73,16 @@ async def process_input(event):
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
             del user_sessions[user_id]
 
+        except PhoneCodeExpiredError:
+            await event.respond("❌ **Error: The OTP has expired. Please use /generate to get a new OTP.**")
+            del user_sessions[user_id]
+        
+        except SessionPasswordNeededError:
+            user_sessions[user_id]["step"] = "password"
+            await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
+        
         except Exception as e:
-            if "PHONE_CODE_EXPIRED" in str(e):
-                await event.respond("❌ **Error: The OTP has expired. Please use /generate to get a new OTP.**")
-                del user_sessions[user_id]
-            elif "SESSION_PASSWORD_NEEDED" in str(e):
-                user_sessions[user_id]["step"] = "password"
-                await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
-            else:
-                await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
     # ✅ Step 3: Enter 2FA Password
     elif step == "password":
