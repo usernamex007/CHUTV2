@@ -112,7 +112,7 @@ async def process_input(event):
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
 # ✅ Step 2: User enters OTP
-elif step == "otp":
+    elif step == "otp":
     otp_code = event.message.text.strip()
     
     if not otp_code.isdigit():
