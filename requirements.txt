@@ -1,3 +1,4 @@
+motor
 dotenv
 pymongo
 telethon
