@@ -23,7 +23,8 @@ async def start(event):
         "👋 **Welcome to the Telegram Session Generator!**\n\nClick **Generate Session** to create your session string.",
         buttons=[
             [Button.inline("🔑 Generate Session", b"generate")],
-            [Button.url("📖 Help", "https://t.me/SANATANI_TECH")]
+            [Button.inline("📖 Help", b"help")],  # Help Button Added
+            [Button.url("🌐 Developer", "https://t.me/SANATANI_TECH")]
         ],
         file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"  # Start Image
     )
@@ -33,15 +34,33 @@ async def start(event):
 async def callback(event):
     if event.data == b"generate":
         await ask_phone(event)
+    elif event.data == b"help":
+        await send_help(event)  # Help button action
     elif event.data == b"cancel":
         await cancel_session(event)
+
+# 🔹 Help Command Handler
+async def send_help(event):
+    help_text = """
+📖 **How to Generate String Session?**
+
+1️⃣ **Click on "🔑 Generate Session"** or type **/generate**  
+2️⃣ **Enter your phone number** (with country code, e.g., +919876543210)  
+3️⃣ **Enter the OTP received on Telegram**  
+4️⃣ **If asked, enter your 2-Step Verification password**  
+5️⃣ **Your session string will be generated!**  
+6️⃣ **Keep your session safe & secure. Don't share it with anyone.**  
+
+⚠️ If you face any issues, click **❌ Cancel** and restart.
+"""
+    await event.respond(help_text, buttons=[Button.inline("🔙 Back", b"start")])
 
 # 🔹 Generate Session Command
 @bot.on(events.NewMessage(pattern="/generate"))
 async def ask_phone(event):
     user_id = event.sender_id
     if user_id in user_sessions:
-        await event.respond("⚠️ **You are already in the process. Please enter your OTP.**")
+        await event.respond("⚠️ **You are already in the process. Please enter your OTP or type /cancel to restart.**")
         return
 
     user_sessions[user_id] = {"step": "phone"}
@@ -49,6 +68,11 @@ async def ask_phone(event):
         "📲 **Enter your phone number with country code (e.g., +919876543210):**",
         buttons=[Button.inline("❌ Cancel", b"cancel")]
     )
+
+# 🔹 Cancel Command
+@bot.on(events.NewMessage(pattern="/cancel"))
+async def cancel_command(event):
+    await cancel_session(event)
 
 # 🔹 Cancel Process
 async def cancel_session(event):
@@ -86,7 +110,10 @@ async def process_input(event):
         try:
             await event.respond("📩 **Sending OTP... Please wait!**")
             await client.send_code_request(phone_number)
-            await event.respond("✅ **OTP sent! Please enter the OTP received on Telegram.**")
+            await event.respond(
+                "✅ **OTP sent! Please enter the OTP received on Telegram.**",
+                buttons=[Button.inline("❌ Cancel", b"cancel")]
+            )
         except Exception as e:
             del user_sessions[user_id]
             await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
@@ -116,7 +143,10 @@ async def process_input(event):
         except Exception as e:
             if "Two-steps verification is enabled" in str(e):
                 user_sessions[user_id]["step"] = "password"
-                await event.respond("🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:")
+                await event.respond(
+                    "🔒 **Your account has 2-Step Verification enabled.**\nPlease enter your Telegram password:",
+                    buttons=[Button.inline("❌ Cancel", b"cancel")]
+                )
             else:
                 await event.respond(f"❌ **Error:** {str(e)}. Please try again.")
 
