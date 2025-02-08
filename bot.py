@@ -1,5 +1,5 @@
 import asyncio
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 
 # 🔹 Telegram API Credentials
@@ -13,10 +13,25 @@ bot = TelegramClient("bot", API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 # 🔹 Store user sessions
 user_sessions = {}
 
+# 🔹 Start command with image and buttons
 @bot.on(events.NewMessage(pattern="/start"))
 async def start(event):
-    await event.respond("👋 **Welcome!**\nUse **/generate** to create your Telegram session string.")
+    await event.respond(
+        "👋 **Welcome to the Telegram Session Generator!**\n\nClick **Generate Session** to create your session string.",
+        buttons=[
+            [Button.inline("🔑 Generate Session", b"generate")],
+            [Button.url("📖 Help", "https://t.me/SANATANI_TECH")]
+        ],
+        file="https://telegra.ph/file/00eaed55184edf059dbf7.jpg"  # Start Image
+    )
 
+# 🔹 Button Handler
+@bot.on(events.CallbackQuery)
+async def callback(event):
+    if event.data == b"generate":
+        await ask_phone(event)
+
+# 🔹 Generate Session Command
 @bot.on(events.NewMessage(pattern="/generate"))
 async def ask_phone(event):
     user_id = event.sender_id
@@ -27,6 +42,7 @@ async def ask_phone(event):
     user_sessions[user_id] = {"step": "phone"}
     await event.respond("📲 **Enter your phone number with country code (e.g., +919876543210):**")
 
+# 🔹 Process User Input (Phone, OTP, Password)
 @bot.on(events.NewMessage)
 async def process_input(event):
     user_id = event.sender_id
@@ -39,7 +55,6 @@ async def process_input(event):
     if step == "phone":
         phone_number = event.message.text.strip()
         
-        # 🔹 Fix: Proper phone number validation
         if not phone_number.startswith("+") or not phone_number[1:].isdigit() or len(phone_number) < 10 or len(phone_number) > 15:
             await event.respond("⚠️ **Invalid phone number!** Please enter again with country code (e.g., +919876543210).")
             return
@@ -47,7 +62,6 @@ async def process_input(event):
         user_sessions[user_id]["phone"] = phone_number
         user_sessions[user_id]["step"] = "otp"
 
-        # ✅ Now send OTP correctly
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
         
