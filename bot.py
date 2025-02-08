@@ -33,6 +33,8 @@ async def start(event):
 async def callback(event):
     if event.data == b"generate":
         await ask_phone(event)
+    elif event.data == b"cancel":
+        await cancel_session(event)
 
 # 🔹 Generate Session Command
 @bot.on(events.NewMessage(pattern="/generate"))
@@ -49,15 +51,13 @@ async def ask_phone(event):
     )
 
 # 🔹 Cancel Process
-@bot.on(events.CallbackQuery)
-async def cancel(event):
+async def cancel_session(event):
     user_id = event.sender_id
-    if event.data == b"cancel":
-        if user_id in user_sessions:
-            del user_sessions[user_id]  # Delete session data
-            await event.respond("✅ **Session process canceled!** You can start again with /generate.")
-        else:
-            await event.respond("⚠️ **You are not in any session process.**")
+    if user_id in user_sessions:
+        del user_sessions[user_id]  # Delete session data
+        await event.respond("✅ **Session process canceled!** You can start again with /generate.")
+    else:
+        await event.respond("⚠️ **You are not in any session process.**")
 
 # 🔹 Process User Input (Phone, OTP, Password)
 @bot.on(events.NewMessage)
@@ -71,21 +71,21 @@ async def process_input(event):
     # ✅ Step 1: User enters phone number
     if step == "phone":
         phone_number = event.message.text.strip()
+        user_sessions[user_id]["phone"] = phone_number  # Fix: Assign phone number properly
         
         if not phone_number.startswith("+") or not phone_number[1:].isdigit() or len(phone_number) < 10 or len(phone_number) > 15:
             await event.respond("⚠️ **Invalid phone number!** Please enter again with country code (e.g., +919876543210).")
             return
         
-        user_sessions[user_id]["phone"] = phone_number
         user_sessions[user_id]["step"] = "otp"
 
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         await client.connect()
+        user_sessions[user_id]["client"] = client  # Fix: Store client correctly
         
         try:
             await event.respond("📩 **Sending OTP... Please wait!**")
-            sent_code = await client.send_code_request(phone_number)
-            user_sessions[user_id]["client"] = client
+            await client.send_code_request(phone_number)
             await event.respond("✅ **OTP sent! Please enter the OTP received on Telegram.**")
         except Exception as e:
             del user_sessions[user_id]
@@ -94,7 +94,6 @@ async def process_input(event):
     # ✅ Step 2: User enters OTP
     elif step == "otp":
         otp_code = event.message.text.strip()
-        
         if not otp_code.isdigit():
             await event.respond("⚠️ **Invalid OTP!** Please enter only numbers.")
             return
@@ -125,6 +124,7 @@ async def process_input(event):
     elif step == "password":
         password = event.message.text.strip()
         client = user_sessions[user_id]["client"]
+        phone_number = user_sessions[user_id]["phone"]
 
         try:
             await client.sign_in(password=password)
